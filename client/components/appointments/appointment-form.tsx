@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { CalendarCheck2, LoaderCircle } from "lucide-react";
 
 import { AuthGuard } from "@/components/auth/auth-guard";
-import { useAsyncTask, useAuth } from "@/hooks";
+import { useAsyncTask, useAuth, useToast } from "@/hooks";
+import { getErrorMessage } from "@/lib/utils";
 import { appointmentService, doctorService, hospitalService } from "@/services";
 import type { Appointment, Doctor, Hospital } from "@/types";
 
@@ -15,6 +16,7 @@ interface AppointmentFormProps {
 
 export function AppointmentForm({ initialHospitalId = "", initialDoctorId = "" }: AppointmentFormProps) {
   const { token, user } = useAuth();
+  const toast = useToast();
   const {
     run: runCreateAppointment,
     isLoading: isSubmitting,
@@ -50,6 +52,7 @@ export function AppointmentForm({ initialHospitalId = "", initialDoctorId = "" }
       } catch (error) {
         if (isMounted) {
           setLoadError(error instanceof Error ? error.message : "Failed to load hospitals");
+          toast.error("Unable to load hospitals", error instanceof Error ? error.message : "Failed to load hospitals");
         }
       } finally {
         if (isMounted) {
@@ -94,6 +97,7 @@ export function AppointmentForm({ initialHospitalId = "", initialDoctorId = "" }
         if (isMounted) {
           setLoadError(error instanceof Error ? error.message : "Failed to load doctors");
           setDoctors([]);
+          toast.error("Unable to load doctors", error instanceof Error ? error.message : "Failed to load doctors");
         }
       } finally {
         if (isMounted) {
@@ -121,18 +125,27 @@ export function AppointmentForm({ initialHospitalId = "", initialDoctorId = "" }
       return;
     }
 
-    await runCreateAppointment(() =>
-      appointmentService.create(
-        {
-          patientId: user.id,
-          hospitalId: form.hospitalId,
-          doctorId: form.doctorId,
-          caseSummary: form.caseSummary,
-          appointmentDate: form.appointmentDate,
-        },
-        token,
-      ),
-    );
+    try {
+      const appointment = await runCreateAppointment(() =>
+        appointmentService.create(
+          {
+            patientId: user.id,
+            hospitalId: form.hospitalId,
+            doctorId: form.doctorId,
+            caseSummary: form.caseSummary,
+            appointmentDate: form.appointmentDate,
+          },
+          token,
+        ),
+      );
+
+      toast.success(
+        "Appointment requested",
+        `Scheduled for ${new Date(appointment.appointmentDate).toLocaleString()}.`,
+      );
+    } catch (submitError) {
+      toast.error("Appointment booking failed", getErrorMessage(submitError, "Please try again."));
+    }
   };
 
   return (

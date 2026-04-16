@@ -11,12 +11,17 @@ import { jsonSuccess } from "../utils/respond";
 
 export const listAppointments = async (req: Request, res: Response): Promise<void> => {
   const result = await getAppointments({
+    search: req.query.search as string | undefined,
     patientId: req.query.patientId as string | undefined,
     hospitalId: req.query.hospitalId as string | undefined,
     doctorId: req.query.doctorId as string | undefined,
     status: req.query.status as string | undefined,
+    city: req.query.city as string | undefined,
+    state: req.query.state as string | undefined,
     page: req.query.page as string | undefined,
     limit: req.query.limit as string | undefined,
+    sortBy: req.query.sortBy as string | undefined,
+    order: req.query.order as string | undefined,
   });
 
   jsonSuccess(res, { data: result.data, pagination: result.pagination });

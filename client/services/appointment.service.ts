@@ -9,6 +9,15 @@ export interface CreateAppointmentPayload {
   appointmentDate: string;
 }
 
+export interface UpdateAppointmentPayload {
+  patientId?: string;
+  hospitalId?: string;
+  doctorId?: string;
+  caseSummary?: string;
+  appointmentDate?: string;
+  status?: "pending" | "confirmed" | "completed" | "cancelled";
+}
+
 export interface AppointmentListFilters {
   hospitalId?: string;
   doctorId?: string;
@@ -67,4 +76,6 @@ export const appointmentService = {
   },
   create: (payload: CreateAppointmentPayload, token: string) =>
     apiClient.post<Appointment, CreateAppointmentPayload>("/api/appointments", payload, withAuth(token)),
+  update: (id: string, payload: UpdateAppointmentPayload, token: string) =>
+    apiClient.patch<Appointment, UpdateAppointmentPayload>(`/api/appointments/${id}`, payload, withAuth(token)),
 };

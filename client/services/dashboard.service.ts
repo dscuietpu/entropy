@@ -35,6 +35,7 @@ export async function getHospitalDashboardMetrics(hospitalId: string, token: str
   const [
     hospital,
     doctorResponse,
+    totalEquipmentResponse,
     availableEquipmentResponse,
     ambulanceResponse,
     pendingAppointmentResponse,
@@ -42,6 +43,10 @@ export async function getHospitalDashboardMetrics(hospitalId: string, token: str
   ] = await Promise.all([
     hospitalService.getById(hospitalId) as Promise<HospitalDetailWithStats>,
     doctorService.listByHospital(hospitalId, 1),
+    equipmentService.list({
+      hospitalId,
+      limit: 1,
+    }),
     equipmentService.list({
       hospitalId,
       status: "available",
@@ -70,7 +75,7 @@ export async function getHospitalDashboardMetrics(hospitalId: string, token: str
     hospital,
     summary: {
       totalDoctors: hospital.stats?.doctorCount ?? doctorResponse.pagination.total,
-      totalEquipment: hospital.stats?.equipmentCount ?? availableEquipmentResponse.pagination.total,
+      totalEquipment: hospital.stats?.equipmentCount ?? totalEquipmentResponse.pagination.total,
       availableEquipment: availableEquipmentResponse.pagination.total,
       totalAmbulances: hospital.stats?.ambulanceCount ?? ambulanceResponse.pagination.total,
       pendingAppointments: pendingAppointmentResponse.pagination.total,

@@ -3,6 +3,7 @@ import express from "express";
 
 import { errorHandler, notFoundHandler } from "./middleware/error.middleware";
 import aiRouter from "./routes/ai.routes";
+import analyticsRouter from "./routes/analytics.routes";
 import ambulanceRouter from "./routes/ambulance.routes";
 import appointmentRouter from "./routes/appointment.routes";
 import authRouter from "./routes/auth.routes";
@@ -22,6 +23,7 @@ app.use(express.json());
 
 app.use("/api/health", healthRouter);
 app.use("/api/ai", aiRouter);
+app.use("/api/analytics", analyticsRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/chat", chatRouter);
 app.use("/api/issues", issueRouter);

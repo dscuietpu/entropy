@@ -2,6 +2,8 @@ import Link from "next/link";
 import { ArrowLeft, CalendarCheck2, MapPin, MessageSquareMore, Phone, Siren, Star } from "lucide-react";
 
 import { DoctorList } from "@/components/doctors/doctor-list";
+import { ReviewSummaryCard } from "@/components/reviews/review-summary-card";
+import { ReviewSubmissionForm } from "@/components/reviews/review-submission-form";
 import { doctorService, hospitalService, reviewService } from "@/services";
 import type { ReviewAuthorPreview } from "@/types";
 
@@ -189,6 +191,8 @@ export default async function HospitalDetailPage({ params }: HospitalDetailPageP
             </div>
 
             <div className="mt-6 space-y-4">
+              <ReviewSummaryCard reviews={reviewsResponse.data} />
+
               {reviewsResponse.data.length ? (
                 reviewsResponse.data.map((review) => (
                   <article key={review._id} className="rounded-[22px] border border-[var(--border)] bg-[var(--card)] p-4">
@@ -215,6 +219,13 @@ export default async function HospitalDetailPage({ params }: HospitalDetailPageP
             </div>
           </div>
         </section>
+
+        <ReviewSubmissionForm
+          targetType="hospital"
+          targetId={hospital._id}
+          title="Write a hospital review"
+          description="This reusable review form supports hospital and doctor feedback, so we can place it in both contexts as the frontend expands."
+        />
       </div>
     </div>
   );

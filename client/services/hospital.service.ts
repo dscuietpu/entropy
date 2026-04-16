@@ -20,6 +20,22 @@ export interface HospitalListResponse {
   };
 }
 
+export interface SemanticHospitalSearchPayload {
+  query: string;
+  filters?: {
+    city?: string;
+    state?: string;
+    availabilityStatus?: "free" | "busy";
+  };
+  topK?: number;
+  candidateLimit?: number;
+}
+
+export interface SemanticHospitalSearchResult {
+  similarity: number;
+  hospital: Hospital;
+}
+
 const createQueryString = (filters: HospitalListFilters) => {
   const params = new URLSearchParams();
 
@@ -51,4 +67,9 @@ export const hospitalService = {
     } satisfies HospitalListResponse;
   },
   getById: (id: string) => apiClient.get<Hospital>(`/api/hospitals/${id}`),
+  semanticSearch: (payload: SemanticHospitalSearchPayload) =>
+    apiClient.post<SemanticHospitalSearchResult[], SemanticHospitalSearchPayload>(
+      "/api/hospitals/search/semantic",
+      payload,
+    ),
 };

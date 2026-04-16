@@ -1,5 +1,6 @@
 import { CalendarDays, CircleAlert, Images, Paperclip } from "lucide-react";
 
+import { StatusBadge } from "@/components/ui/status-badge";
 import type { Issue } from "@/types";
 
 interface IssueCardProps {
@@ -7,9 +8,9 @@ interface IssueCardProps {
 }
 
 const statusStyles: Record<string, string> = {
-  open: "bg-red-50 text-red-700",
-  "in-progress": "bg-amber-50 text-amber-700",
-  resolved: "bg-emerald-50 text-emerald-700",
+  open: "danger",
+  "in-progress": "warning",
+  resolved: "success",
 };
 
 export function IssueCard({ issue }: IssueCardProps) {
@@ -17,10 +18,10 @@ export function IssueCard({ issue }: IssueCardProps) {
   const previewAttachments = attachments.slice(0, 3);
 
   return (
-    <article className="rounded-[28px] border border-[var(--border)] bg-white/92 p-6 shadow-sm">
+    <article className="surface-card rounded-[30px] p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-xs font-medium uppercase tracking-[0.2em] text-[var(--primary)]">{issue.issueType}</p>
+          <p className="text-xs font-medium uppercase tracking-[0.2em] text-[var(--primary)]">{issue.issueType.replace("-", " ")}</p>
           <h3 className="mt-2 text-xl font-semibold text-[var(--foreground)]">{issue.title}</h3>
           <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-[var(--muted)]">
             <span className="inline-flex items-center gap-2">
@@ -34,13 +35,10 @@ export function IssueCard({ issue }: IssueCardProps) {
           </div>
         </div>
 
-        <span
-          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-            statusStyles[issue.status] ?? "bg-slate-100 text-slate-700"
-          }`}
-        >
-          {issue.status}
-        </span>
+        <StatusBadge
+          label={issue.status}
+          tone={(statusStyles[issue.status] as "danger" | "warning" | "success" | undefined) ?? "neutral"}
+        />
       </div>
 
       <p className="mt-4 text-sm leading-8 text-[var(--muted)]">{issue.description}</p>

@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Ambulance, LoaderCircle, PencilLine, Plus, Trash2 } from "lucide-react";
+import { Ambulance, PencilLine, Plus, Trash2 } from "lucide-react";
 
 import { AmbulanceFilters } from "@/components/ambulances/ambulance-filters";
 import { AmbulanceFormPanel } from "@/components/ambulances/ambulance-form-panel";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { LoadingState } from "@/components/ui/loading-state";
 import { cn, getErrorMessage } from "@/lib/utils";
-import { useAuth } from "@/hooks";
+import { useAuth, useToast } from "@/hooks";
 import { ambulanceService } from "@/services";
 import type { Ambulance as AmbulanceEntity, AmbulanceStatus } from "@/types";
 
@@ -34,6 +37,7 @@ const statusStyles: Record<AmbulanceStatus, string> = {
 
 export function AmbulanceManagement() {
   const { token, user } = useAuth();
+  const toast = useToast();
   const hospitalId = user?.linkedHospitalId ?? "";
 
   const [statusFilter, setStatusFilter] = useState<"" | AmbulanceStatus>("");
@@ -74,6 +78,7 @@ export function AmbulanceManagement() {
       setPagination(response.pagination);
     } catch (error) {
       setLoadError(getErrorMessage(error, "Failed to load ambulances"));
+      toast.error("Unable to load ambulances", getErrorMessage(error, "Failed to load ambulances"));
     } finally {
       setIsLoading(false);
     }
@@ -115,6 +120,7 @@ export function AmbulanceManagement() {
   const handleSave = async () => {
     if (!token || !hospitalId) {
       setActionError("You must be logged in as a hospital admin to manage ambulances.");
+      toast.error("Ambulance action failed", "You must be logged in as a hospital admin to manage ambulances.");
       return;
     }
 
@@ -135,15 +141,18 @@ export function AmbulanceManagement() {
       if (formMode === "create") {
         await ambulanceService.create(payload, token);
         setSuccessMessage("Ambulance created successfully.");
+        toast.success("Ambulance created", "The fleet record was added successfully.");
       } else if (editingAmbulanceId) {
         await ambulanceService.update(editingAmbulanceId, payload, token);
         setSuccessMessage("Ambulance updated successfully.");
+        toast.success("Ambulance updated", "The fleet record was updated successfully.");
       }
 
       closePanel();
       await loadAmbulances();
     } catch (error) {
       setActionError(getErrorMessage(error, "Unable to save ambulance"));
+      toast.error("Ambulance action failed", getErrorMessage(error, "Unable to save ambulance"));
     } finally {
       setIsSubmitting(false);
     }
@@ -152,6 +161,7 @@ export function AmbulanceManagement() {
   const handleDelete = async (id: string) => {
     if (!token) {
       setActionError("You must be logged in to delete an ambulance.");
+      toast.error("Delete failed", "You must be logged in to delete an ambulance.");
       return;
     }
 
@@ -164,9 +174,11 @@ export function AmbulanceManagement() {
     try {
       await ambulanceService.remove(id, token);
       setSuccessMessage("Ambulance deleted successfully.");
+      toast.success("Ambulance deleted", "The fleet record was removed.");
       await loadAmbulances();
     } catch (error) {
       setActionError(getErrorMessage(error, "Unable to delete ambulance"));
+      toast.error("Delete failed", getErrorMessage(error, "Unable to delete ambulance"));
     } finally {
       setActiveActionId(null);
     }
@@ -213,7 +225,10 @@ export function AmbulanceManagement() {
         <div className="rounded-[24px] border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-700">{successMessage}</div>
       ) : null}
       {loadError || actionError ? (
-        <div className="rounded-[24px] border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700">{loadError || actionError}</div>
+        <ErrorState
+          title={loadError ? "Unable to load ambulances" : "Ambulance action failed"}
+          description={loadError || actionError || "Something went wrong while managing ambulances."}
+        />
       ) : null}
 
       <section className="rounded-[30px] border border-[var(--border)] bg-white/92 shadow-[0_20px_50px_rgba(16,35,27,0.06)]">
@@ -225,14 +240,18 @@ export function AmbulanceManagement() {
         </div>
 
         {isLoading ? (
-          <div className="flex items-center justify-center gap-3 px-6 py-16 text-sm text-[var(--muted)]">
-            <LoaderCircle className="h-5 w-5 animate-spin" />
-            Loading ambulance fleet...
+          <div className="px-6 py-8">
+            <LoadingState
+              title="Loading ambulance fleet"
+              description="Fetching vehicle, driver, and availability data for this hospital fleet."
+            />
           </div>
         ) : ambulances.length === 0 ? (
-          <div className="px-6 py-16 text-center">
-            <p className="text-lg font-semibold text-[var(--foreground)]">No ambulances found</p>
-            <p className="mt-2 text-sm text-[var(--muted)]">Add the first ambulance or change the current status filter.</p>
+          <div className="px-6 py-8">
+            <EmptyState
+              title="No ambulances found"
+              description="Add the first ambulance or change the current status filter."
+            />
           </div>
         ) : (
           <>

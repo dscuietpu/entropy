@@ -39,7 +39,7 @@ export function EquipmentFormPanel({
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-[rgba(16,35,27,0.34)] backdrop-blur-sm">
-      <div className="h-full w-full max-w-xl overflow-y-auto bg-white px-6 py-6 shadow-[0_30px_70px_rgba(16,35,27,0.18)] sm:px-8">
+      <div className="h-full w-full max-w-xl overflow-y-auto bg-[linear-gradient(180deg,#ffffff_0%,#f6faf8_100%)] px-6 py-6 shadow-[0_30px_70px_rgba(16,35,27,0.18)] sm:px-8">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
@@ -61,32 +61,32 @@ export function EquipmentFormPanel({
 
         <div className="mt-8 grid gap-5">
           <label className="block">
-            <span className="mb-2 block text-sm font-medium text-[var(--foreground)]">Equipment name</span>
+            <span className="field-label">Equipment name</span>
             <input
               value={values.name}
               onChange={(event) => onChange({ ...values, name: event.target.value })}
               placeholder="Portable ventilator"
-              className="w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3 text-sm outline-none transition focus:border-[var(--primary)]"
+              className="field-control"
             />
           </label>
 
           <div className="grid gap-5 md:grid-cols-2">
             <label className="block">
-              <span className="mb-2 block text-sm font-medium text-[var(--foreground)]">Type</span>
+              <span className="field-label">Type</span>
               <input
                 value={values.type}
                 onChange={(event) => onChange({ ...values, type: event.target.value })}
                 placeholder="Respiratory support"
-                className="w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3 text-sm outline-none transition focus:border-[var(--primary)]"
+                className="field-control"
               />
             </label>
 
             <label className="block">
-              <span className="mb-2 block text-sm font-medium text-[var(--foreground)]">Status</span>
+              <span className="field-label">Status</span>
               <select
                 value={values.status}
                 onChange={(event) => onChange({ ...values, status: event.target.value as EquipmentStatus })}
-                className="w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3 text-sm outline-none transition focus:border-[var(--primary)]"
+                className="field-control"
               >
                 <option value="available">Available</option>
                 <option value="in-use">In use</option>
@@ -96,21 +96,21 @@ export function EquipmentFormPanel({
           </div>
 
           <label className="block">
-            <span className="mb-2 block text-sm font-medium text-[var(--foreground)]">Hospital section</span>
+            <span className="field-label">Hospital section</span>
             <input
               value={values.hospitalSection}
               onChange={(event) => onChange({ ...values, hospitalSection: event.target.value })}
               placeholder="ICU"
-              className="w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3 text-sm outline-none transition focus:border-[var(--primary)]"
+              className="field-control"
             />
           </label>
 
           <label className="block">
-            <span className="mb-2 block text-sm font-medium text-[var(--foreground)]">Assigned doctor</span>
+            <span className="field-label">Assigned doctor</span>
             <select
               value={values.assignedTo}
               onChange={(event) => onChange({ ...values, assignedTo: event.target.value })}
-              className="w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3 text-sm outline-none transition focus:border-[var(--primary)]"
+              className="field-control"
             >
               <option value="">No doctor assigned</option>
               {doctors.map((doctor) => (

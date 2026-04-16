@@ -20,13 +20,13 @@ export function CtaBanner() {
 
         <div className="flex flex-col gap-3 sm:flex-row">
           <Link
-            href="/"
-            className="inline-flex items-center justify-center gap-2 rounded-full border border-[var(--border)] bg-[var(--card)] px-6 py-3 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--primary)]"
+            href="/hospitals"
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-[var(--border)] bg-white px-6 py-3 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--primary)]"
           >
             Explore Hospitals
           </Link>
           <Link
-            href="/hospital"
+            href="/hospital/dashboard"
             className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[var(--primary-strong)]"
           >
             Hospital Dashboard

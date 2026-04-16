@@ -23,6 +23,34 @@ export interface ClaimEquipmentPayload {
   doctorId: string;
 }
 
+export interface SemanticEquipmentSearchPayload {
+  query: string;
+  filters?: {
+    hospitalId?: string;
+    status?: "available" | "in-use" | "maintenance";
+    type?: string;
+    hospitalSection?: string;
+  };
+  topK?: number;
+  candidateLimit?: number;
+}
+
+export interface SemanticEquipmentSearchResult {
+  similarity: number;
+  equipment: Equipment & {
+    hospitalId?:
+      | string
+      | {
+          _id?: string;
+          name: string;
+          city?: string;
+          state?: string;
+          contactNumber?: string;
+          availabilityStatus?: "free" | "busy";
+        };
+  };
+}
+
 export interface EquipmentListResponse {
   data: Equipment[];
   pagination: {
@@ -79,4 +107,9 @@ export const equipmentService = {
     apiClient.post<Equipment, ClaimEquipmentPayload>(`/api/equipment/${id}/claim`, payload, withAuth(token)),
   release: (id: string, token: string) =>
     apiClient.post<Equipment, undefined>(`/api/equipment/${id}/release`, undefined, withAuth(token)),
+  semanticSearch: (payload: SemanticEquipmentSearchPayload) =>
+    apiClient.post<SemanticEquipmentSearchResult[], SemanticEquipmentSearchPayload>(
+      "/api/equipment/search/semantic",
+      payload,
+    ),
 };

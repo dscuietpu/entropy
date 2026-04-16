@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 
+import { Toaster } from "@/components/ui/toaster";
+
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -16,6 +18,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <div className="app-shell">{children}</div>
+        <Toaster />
       </body>
     </html>
   );

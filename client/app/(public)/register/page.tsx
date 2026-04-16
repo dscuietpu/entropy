@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { AuthShell } from "@/components/auth/auth-shell";
-import { useAsyncTask, useAuth } from "@/hooks";
+import { useAsyncTask, useAuth, useToast } from "@/hooks";
+import { getErrorMessage } from "@/lib/utils";
 import { authService } from "@/services";
 import { useAuthStore } from "@/store";
 import type { AuthResponse, UserRole } from "@/types";
@@ -20,6 +21,7 @@ export default function RegisterPage() {
   const router = useRouter();
   const { isAuthenticated, isHydrated } = useAuth();
   const { setSession } = useAuthStore();
+  const toast = useToast();
   const { isLoading, error, run } = useAsyncTask<AuthResponse>();
 
   const [form, setForm] = useState({
@@ -45,9 +47,14 @@ export default function RegisterPage() {
       linkedHospitalId: form.linkedHospitalId.trim() || undefined,
     };
 
-    const result = await run(() => authService.register(payload));
-    setSession(result);
-    router.push(form.role === "patient" ? "/" : "/hospital");
+    try {
+      const result = await run(() => authService.register(payload));
+      setSession(result);
+      toast.success("Account created", "Your new account is ready to use.");
+      router.push(form.role === "patient" ? "/" : "/hospital");
+    } catch (submitError) {
+      toast.error("Registration failed", getErrorMessage(submitError, "Please review the form and try again."));
+    }
   };
 
   return (

@@ -1,6 +1,7 @@
 import type { Doctor } from "@/types";
 
 import { DoctorCard } from "@/components/doctors/doctor-card";
+import { EmptyState } from "@/components/ui/empty-state";
 
 interface DoctorListProps {
   doctors: Doctor[];
@@ -44,7 +45,7 @@ export function DoctorList({
   }
 
   if (!doctors.length) {
-    return <p className="text-sm leading-7 text-[var(--muted)]">{emptyMessage}</p>;
+    return <EmptyState title="No doctors listed yet" description={emptyMessage} />;
   }
 
   return (

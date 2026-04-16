@@ -5,7 +5,8 @@ import { LoaderCircle, PlusSquare } from "lucide-react";
 
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { IssueAttachmentPreviews } from "@/components/issues/issue-attachment-previews";
-import { useAsyncTask, useAuth } from "@/hooks";
+import { useAsyncTask, useAuth, useToast } from "@/hooks";
+import { getErrorMessage } from "@/lib/utils";
 import { hospitalService, issueService } from "@/services";
 import type { Hospital, Issue } from "@/types";
 
@@ -16,6 +17,7 @@ interface AttachmentPreview {
 
 export function IssueForm() {
   const { token, user } = useAuth();
+  const toast = useToast();
   const {
     run: runCreateIssue,
     isLoading: isSubmitting,
@@ -61,6 +63,7 @@ export function IssueForm() {
       } catch (error) {
         if (isMounted) {
           setLoadError(error instanceof Error ? error.message : "Failed to load hospitals");
+          toast.error("Unable to load hospitals", error instanceof Error ? error.message : "Failed to load hospitals");
         }
       } finally {
         if (isMounted) {
@@ -101,26 +104,32 @@ export function IssueForm() {
       return;
     }
 
-    await runCreateIssue(() =>
-      issueService.create(
-        {
-          title: form.title.trim(),
-          description: form.description.trim(),
-          issueType: form.issueType,
-          roleType: form.roleType,
-          hospitalId: form.hospitalId || undefined,
-          attachments: form.attachments,
-        },
-        token,
-      ),
-    );
+    try {
+      const issue = await runCreateIssue(() =>
+        issueService.create(
+          {
+            title: form.title.trim(),
+            description: form.description.trim(),
+            issueType: form.issueType,
+            roleType: form.roleType,
+            hospitalId: form.hospitalId || undefined,
+            attachments: form.attachments,
+          },
+          token,
+        ),
+      );
 
-    setForm((current) => ({
-      ...current,
-      title: "",
-      description: "",
-      attachments: [],
-    }));
+      setForm((current) => ({
+        ...current,
+        title: "",
+        description: "",
+        attachments: [],
+      }));
+
+      toast.success("Issue submitted", `Issue created with status ${issue.status}.`);
+    } catch (submitError) {
+      toast.error("Issue submission failed", getErrorMessage(submitError, "Please try again."));
+    }
   };
 
   return (

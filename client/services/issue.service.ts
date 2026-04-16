@@ -29,6 +29,20 @@ export interface CreateIssuePayload {
   attachments?: File[];
 }
 
+export interface UpdateIssuePayload {
+  title?: string;
+  description?: string;
+  status?: "open" | "in-progress" | "resolved";
+  resolvedBy?: string;
+  resolvedAt?: string;
+}
+
+const withAuth = (token: string) => ({
+  headers: {
+    Authorization: `Bearer ${token}`,
+  },
+});
+
 const createQueryString = (filters: IssueListFilters) => {
   const params = new URLSearchParams();
 
@@ -58,12 +72,6 @@ export const issueService = {
     } satisfies IssueListResponse;
   },
   create: async (payload: CreateIssuePayload, token: string) => {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
-
-    if (!baseUrl) {
-      throw new Error("Missing NEXT_PUBLIC_API_URL");
-    }
-
     const formData = new FormData();
     formData.append("title", payload.title);
     formData.append("description", payload.description);
@@ -78,26 +86,8 @@ export const issueService = {
       formData.append("attachments", file);
     }
 
-    const response = await fetch(new URL("/api/issues", baseUrl).toString(), {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: formData,
-    });
-
-    const payloadJson = (await response.json().catch(() => null)) as
-      | { message?: string; data?: Issue }
-      | null;
-
-    if (!response.ok) {
-      throw new Error(payloadJson?.message || "Failed to create issue");
-    }
-
-    if (!payloadJson?.data) {
-      throw new Error("Issue created but response payload was missing");
-    }
-
-    return payloadJson.data;
+    return apiClient.postFormData<Issue>("/api/issues", formData, withAuth(token));
   },
+  update: (id: string, payload: UpdateIssuePayload, token: string) =>
+    apiClient.patch<Issue, UpdateIssuePayload>(`/api/issues/${id}`, payload, withAuth(token)),
 };

@@ -10,18 +10,30 @@ import {
   IssueRoleType,
   IssueStatus,
   IssueType,
+  Hospital,
 } from "../models";
 import { deleteCloudinaryAsset, uploadMultipleFilesToCloudinary } from "./cloudinary.service";
 import { HttpError } from "../utils/http-error";
+import {
+  buildPaginationMeta,
+  makeContainsRegex,
+  parsePagination,
+  parseSort,
+} from "../utils/query-builder";
 import { emitIssueCreated, emitIssueUpdated } from "../sockets";
 
 interface IssueListFilters {
+  search?: string;
   status?: string;
   issueType?: string;
   roleType?: string;
   hospitalId?: string;
+  city?: string;
+  state?: string;
   page?: string;
   limit?: string;
+  sortBy?: string;
+  order?: string;
 }
 
 interface CreateIssuePayload {
@@ -45,14 +57,6 @@ interface UpdateIssuePayload {
 const isValidEnumValue = <T extends readonly string[]>(value: string, values: T): boolean =>
   values.includes(value as T[number]);
 
-const toPositiveNumber = (value: string | undefined, fallback: number): number => {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return fallback;
-  }
-  return Math.floor(parsed);
-};
-
 const validateObjectId = (value: string, fieldName: string): Types.ObjectId => {
   if (!isValidObjectId(value)) {
     throw new HttpError(400, `Invalid ${fieldName}`);
@@ -61,17 +65,54 @@ const validateObjectId = (value: string, fieldName: string): Types.ObjectId => {
   return new Types.ObjectId(value);
 };
 
+const resolveHospitalIds = async (filters: Pick<IssueListFilters, "hospitalId" | "city" | "state">) => {
+  if (filters.hospitalId) {
+    return [validateObjectId(filters.hospitalId, "hospitalId")];
+  }
+
+  if (!filters.city && !filters.state) {
+    return undefined;
+  }
+
+  const hospitalQuery: FilterQuery<{ city: string; state: string }> = {};
+  const cityRegex = makeContainsRegex(filters.city);
+  const stateRegex = makeContainsRegex(filters.state);
+
+  if (cityRegex) {
+    hospitalQuery.city = { $regex: cityRegex };
+  }
+  if (stateRegex) {
+    hospitalQuery.state = { $regex: stateRegex };
+  }
+
+  const hospitals = await Hospital.find(hospitalQuery).select("_id").lean();
+  return hospitals.map((hospital) => hospital._id as Types.ObjectId);
+};
+
 export const getAllIssues = async (
   filters: IssueListFilters
 ): Promise<{
   data: IIssue[];
   pagination: { total: number; page: number; limit: number; totalPages: number };
 }> => {
-  const page = toPositiveNumber(filters.page, 1);
-  const limit = Math.min(toPositiveNumber(filters.limit, 10), 100);
-  const skip = (page - 1) * limit;
+  const { page, limit, skip } = parsePagination({
+    page: filters.page,
+    limit: filters.limit,
+  });
+  const sort = parseSort({
+    sortBy: filters.sortBy,
+    order: filters.order,
+    allowedSorts: {
+      title: "title",
+      status: "status",
+      issueType: "issueType",
+      createdAt: "createdAt",
+    },
+    defaultSort: { createdAt: -1 },
+  });
 
   const query: FilterQuery<IIssue> = {};
+  const hospitalIds = await resolveHospitalIds(filters);
 
   if (filters.status) {
     if (!isValidEnumValue(filters.status, ISSUE_STATUSES)) {
@@ -94,23 +135,32 @@ export const getAllIssues = async (
     query.roleType = filters.roleType as IssueRoleType;
   }
 
-  if (filters.hospitalId) {
-    query.hospitalId = validateObjectId(filters.hospitalId, "hospitalId");
+  if (hospitalIds) {
+    if (!hospitalIds.length) {
+      return {
+        data: [],
+        pagination: buildPaginationMeta(0, page, limit),
+      };
+    }
+    query.hospitalId = { $in: hospitalIds };
+  }
+
+  if (filters.search?.trim()) {
+    const searchRegex = makeContainsRegex(filters.search) as RegExp;
+    query.$or = [
+      { title: { $regex: searchRegex } },
+      { description: { $regex: searchRegex } },
+    ];
   }
 
   const [issues, total] = await Promise.all([
-    Issue.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+    Issue.find(query).sort(sort).skip(skip).limit(limit).lean(),
     Issue.countDocuments(query),
   ]);
 
   return {
     data: issues,
-    pagination: {
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit) || 1,
-    },
+    pagination: buildPaginationMeta(total, page, limit),
   };
 };
 

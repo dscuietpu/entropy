@@ -3,14 +3,24 @@ import { FilterQuery, isValidObjectId } from "mongoose";
 import { IMedicalShop, MedicalShop } from "../models";
 import { HttpError } from "../utils/http-error";
 import { buildMedicalShopEmbeddingText } from "../utils/buildEmbeddingText";
+import {
+  attachRegexFilter,
+  buildPaginationMeta,
+  makeContainsRegex,
+  parsePagination,
+  parseSort,
+} from "../utils/query-builder";
 import { embedBestEffort } from "./embedding.service";
 
 interface MedicalShopFilters {
+  search?: string;
   city?: string;
   state?: string;
   area?: string;
   page?: string;
   limit?: string;
+  sortBy?: string;
+  order?: string;
 }
 
 interface CreateMedicalShopPayload {
@@ -38,14 +48,6 @@ interface MedicalShopListResponse {
   };
 }
 
-const toPositiveNumber = (value: string | undefined, fallback: number): number => {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return fallback;
-  }
-  return Math.floor(parsed);
-};
-
 const sanitizeArray = (arr?: string[]): string[] =>
   (arr ?? []).map((item) => item.trim()).filter(Boolean);
 
@@ -67,37 +69,46 @@ const validateLocation = (location?: {
 export const getMedicalShops = async (
   filters: MedicalShopFilters
 ): Promise<MedicalShopListResponse> => {
-  const page = toPositiveNumber(filters.page, 1);
-  const limit = Math.min(toPositiveNumber(filters.limit, 10), 100);
-  const skip = (page - 1) * limit;
+  const { page, limit, skip } = parsePagination({
+    page: filters.page,
+    limit: filters.limit,
+  });
+  const sort = parseSort({
+    sortBy: filters.sortBy,
+    order: filters.order,
+    allowedSorts: {
+      name: "name",
+      area: "area",
+      city: "city",
+      state: "state",
+      createdAt: "createdAt",
+    },
+    defaultSort: { createdAt: -1 },
+  });
 
   const query: FilterQuery<IMedicalShop> = {};
 
-  if (filters.city) {
-    query.city = { $regex: filters.city.trim(), $options: "i" };
+  if (filters.search?.trim()) {
+    const searchRegex = makeContainsRegex(filters.search) as RegExp;
+    query.$or = [
+      { name: { $regex: searchRegex } },
+      { area: { $regex: searchRegex } },
+      { availableMedicines: { $regex: searchRegex } },
+    ];
   }
 
-  if (filters.state) {
-    query.state = { $regex: filters.state.trim(), $options: "i" };
-  }
-
-  if (filters.area) {
-    query.area = { $regex: filters.area.trim(), $options: "i" };
-  }
+  attachRegexFilter(query, "city", filters.city);
+  attachRegexFilter(query, "state", filters.state);
+  attachRegexFilter(query, "area", filters.area);
 
   const [shops, total] = await Promise.all([
-    MedicalShop.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+    MedicalShop.find(query).sort(sort).skip(skip).limit(limit).lean(),
     MedicalShop.countDocuments(query),
   ]);
 
   return {
     data: shops,
-    pagination: {
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit) || 1,
-    },
+    pagination: buildPaginationMeta(total, page, limit),
   };
 };
 

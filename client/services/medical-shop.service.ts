@@ -19,6 +19,22 @@ export interface MedicalShopListResponse {
   };
 }
 
+export interface SemanticMedicalShopSearchPayload {
+  query: string;
+  filters?: {
+    city?: string;
+    state?: string;
+    area?: string;
+  };
+  topK?: number;
+  candidateLimit?: number;
+}
+
+export interface SemanticMedicalShopSearchResult {
+  similarity: number;
+  medicalShop: MedicalShop;
+}
+
 const createQueryString = (filters: MedicalShopListFilters) => {
   const params = new URLSearchParams();
 
@@ -48,4 +64,9 @@ export const medicalShopService = {
       },
     } satisfies MedicalShopListResponse;
   },
+  semanticSearch: (payload: SemanticMedicalShopSearchPayload) =>
+    apiClient.post<SemanticMedicalShopSearchResult[], SemanticMedicalShopSearchPayload>(
+      "/api/medical-shops/search/semantic",
+      payload,
+    ),
 };

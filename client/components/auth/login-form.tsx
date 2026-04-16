@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { AuthShell } from "@/components/auth/auth-shell";
-import { useAsyncTask, useAuth } from "@/hooks";
+import { useAsyncTask, useAuth, useToast } from "@/hooks";
+import { getErrorMessage } from "@/lib/utils";
 import { authService } from "@/services";
 import { useAuthStore } from "@/store";
 import type { AuthResponse } from "@/types";
@@ -18,6 +19,7 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
   const router = useRouter();
   const { isAuthenticated, isHydrated } = useAuth();
   const { setSession } = useAuthStore();
+  const toast = useToast();
   const { isLoading, error, run } = useAsyncTask<AuthResponse>();
 
   const [form, setForm] = useState({
@@ -34,9 +36,14 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const result = await run(() => authService.login(form));
-    setSession(result);
-    router.push(redirectTo);
+    try {
+      const result = await run(() => authService.login(form));
+      setSession(result);
+      toast.success("Signed in successfully", "Your account session is ready.");
+      router.push(redirectTo);
+    } catch (submitError) {
+      toast.error("Login failed", getErrorMessage(submitError, "Please check your credentials and try again."));
+    }
   };
 
   return (

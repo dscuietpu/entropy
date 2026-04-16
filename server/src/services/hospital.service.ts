@@ -14,9 +14,17 @@ import {
 } from "../models";
 import { HttpError } from "../utils/http-error";
 import { buildHospitalEmbeddingText } from "../utils/buildEmbeddingText";
+import {
+  attachRegexFilter,
+  buildPaginationMeta,
+  parseCsvParam,
+  parsePagination,
+  parseSort,
+} from "../utils/query-builder";
 import { embedBestEffort } from "./embedding.service";
 
 interface HospitalFilters {
+  search?: string;
   city?: string;
   state?: string;
   availabilityStatus?: string;
@@ -24,6 +32,8 @@ interface HospitalFilters {
   facilities?: string;
   page?: string;
   limit?: string;
+  sortBy?: string;
+  order?: string;
 }
 
 interface CreateHospitalPayload {
@@ -58,27 +68,8 @@ interface HospitalListResponse {
   };
 }
 
-const parseStringArray = (value?: string): string[] => {
-  if (!value) {
-    return [];
-  }
-
-  return value
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-};
-
 const sanitizeArray = (arr?: string[]): string[] =>
   (arr ?? []).map((item) => item.trim()).filter(Boolean);
-
-const toPositiveNumber = (value: string | undefined, fallback: number): number => {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return fallback;
-  }
-  return Math.floor(parsed);
-};
 
 const validateAvailabilityStatus = (availabilityStatus: string): HospitalAvailabilityStatus => {
   if (!HOSPITAL_AVAILABILITY_STATUSES.includes(availabilityStatus as HospitalAvailabilityStatus)) {
@@ -103,47 +94,60 @@ const validateLocation = (location?: {
 };
 
 export const getHospitals = async (filters: HospitalFilters): Promise<HospitalListResponse> => {
-  const page = toPositiveNumber(filters.page, 1);
-  const limit = Math.min(toPositiveNumber(filters.limit, 10), 100);
-  const skip = (page - 1) * limit;
+  const { page, limit, skip } = parsePagination({
+    page: filters.page,
+    limit: filters.limit,
+  });
+  const sort = parseSort({
+    sortBy: filters.sortBy,
+    order: filters.order,
+    allowedSorts: {
+      name: "name",
+      city: "city",
+      state: "state",
+      averageRating: "averageRating",
+      ambulanceCount: "ambulanceCount",
+      createdAt: "createdAt",
+    },
+    defaultSort: { createdAt: -1 },
+  });
 
   const query: FilterQuery<IHospital> = {};
 
-  if (filters.city) {
-    query.city = { $regex: filters.city.trim(), $options: "i" };
+  if (filters.search?.trim()) {
+    const searchRegex = new RegExp(filters.search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+    query.$or = [
+      { name: { $regex: searchRegex } },
+      { description: { $regex: searchRegex } },
+      { address: { $regex: searchRegex } },
+    ];
   }
 
-  if (filters.state) {
-    query.state = { $regex: filters.state.trim(), $options: "i" };
-  }
+  attachRegexFilter(query, "city", filters.city);
+  attachRegexFilter(query, "state", filters.state);
 
   if (filters.availabilityStatus) {
     query.availabilityStatus = validateAvailabilityStatus(filters.availabilityStatus);
   }
 
-  const specialties = parseStringArray(filters.specialties);
+  const specialties = parseCsvParam(filters.specialties);
   if (specialties.length) {
     query.specialties = { $in: specialties };
   }
 
-  const facilities = parseStringArray(filters.facilities);
+  const facilities = parseCsvParam(filters.facilities);
   if (facilities.length) {
     query.facilities = { $in: facilities };
   }
 
   const [hospitals, total] = await Promise.all([
-    Hospital.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+    Hospital.find(query).sort(sort).skip(skip).limit(limit).lean(),
     Hospital.countDocuments(query),
   ]);
 
   return {
     data: hospitals,
-    pagination: {
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit) || 1,
-    },
+    pagination: buildPaginationMeta(total, page, limit),
   };
 };
 

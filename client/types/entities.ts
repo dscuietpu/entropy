@@ -18,6 +18,32 @@ export interface ReviewAuthorPreview {
   role?: UserRole;
 }
 
+export interface AppointmentPatientPreview {
+  _id?: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  role?: UserRole;
+}
+
+export interface AppointmentHospitalPreview {
+  _id?: string;
+  name: string;
+  city?: string;
+  state?: string;
+  contactNumber?: string;
+  availabilityStatus?: HospitalAvailabilityStatus;
+}
+
+export interface AppointmentDoctorPreview {
+  _id?: string;
+  name: string;
+  specialization?: string;
+  department?: string;
+  availability?: boolean;
+  averageRating?: number;
+}
+
 export interface User extends BaseEntity {
   name: string;
   email: string;
@@ -78,9 +104,9 @@ export interface Ambulance extends BaseEntity {
 }
 
 export interface Appointment extends BaseEntity {
-  patientId: string;
-  hospitalId: string;
-  doctorId: string;
+  patientId: string | AppointmentPatientPreview;
+  hospitalId: string | AppointmentHospitalPreview;
+  doctorId: string | AppointmentDoctorPreview;
   caseSummary: string;
   appointmentDate: string;
   status: AppointmentStatus;
@@ -127,4 +153,24 @@ export interface Message extends BaseEntity {
   message: string;
   attachments: MediaAttachment[];
   readBy: string[];
+}
+
+export interface ChatSenderPreview {
+  _id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  phone: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  chatRoomId: string;
+  message: string;
+  senderRole: MessageSenderRole;
+  attachments: MediaAttachment[];
+  readBy: string[];
+  sender: ChatSenderPreview | null;
+  createdAt: string;
+  updatedAt: string;
 }

@@ -11,11 +11,16 @@ import { jsonSuccess } from "../utils/respond";
 
 export const listDoctors = async (req: Request, res: Response): Promise<void> => {
   const result = await getDoctors({
+    search: req.query.search as string | undefined,
     hospitalId: req.query.hospitalId as string | undefined,
     specialization: req.query.specialization as string | undefined,
     department: req.query.department as string | undefined,
+    city: req.query.city as string | undefined,
+    state: req.query.state as string | undefined,
     page: req.query.page as string | undefined,
     limit: req.query.limit as string | undefined,
+    sortBy: req.query.sortBy as string | undefined,
+    order: req.query.order as string | undefined,
   });
 
   jsonSuccess(res, { data: result.data, pagination: result.pagination });

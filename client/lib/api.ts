@@ -3,12 +3,21 @@ import type { ApiErrorPayload, ApiRequestOptions, ApiSuccessResponse } from "@/t
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL?.trim();
 
-function buildUrl(path: string) {
+export function getApiBaseUrl() {
   if (!API_BASE_URL) {
     throw new Error("Missing NEXT_PUBLIC_API_URL");
   }
 
-  return new URL(path, API_BASE_URL.endsWith("/") ? API_BASE_URL : `${API_BASE_URL}/`).toString();
+  return API_BASE_URL;
+}
+
+export function getApiOrigin() {
+  return new URL(getApiBaseUrl()).origin;
+}
+
+export function buildUrl(path: string) {
+  const baseUrl = getApiBaseUrl();
+  return new URL(path, baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`).toString();
 }
 
 async function parseResponse<T>(response: Response): Promise<T> {
@@ -69,6 +78,37 @@ export async function apiRequestEnvelope<TResponse, TBody = unknown>(
   };
 }
 
+export async function apiRequestFormData<TResponse>(
+  path: string,
+  body: FormData,
+  options: Omit<ApiRequestOptions<FormData>, "method" | "body" | "headers"> & {
+    headers?: Record<string, string>;
+    method?: "POST" | "PATCH" | "PUT";
+  } = {},
+) {
+  const { headers, method = "POST", ...requestInit } = options;
+
+  const response = await fetch(buildUrl(path), {
+    ...requestInit,
+    method,
+    headers,
+    body,
+  });
+
+  const payload = await parseResponse<ApiSuccessResponse<TResponse> | ApiErrorPayload>(response);
+
+  if (!response.ok) {
+    const message = isErrorPayload(payload) ? payload.message : `Request failed with status ${response.status}`;
+    throw new ApiError(message, response.status, isErrorPayload(payload) ? payload : undefined);
+  }
+
+  if (typeof payload === "object" && payload && "data" in payload) {
+    return payload.data;
+  }
+
+  return payload as TResponse;
+}
+
 export async function apiRequest<TResponse, TBody = unknown>(
   path: string,
   options: ApiRequestOptions<TBody> = {},
@@ -90,6 +130,20 @@ export const apiClient = {
     apiRequest<TResponse, TBody>(path, { ...options, method: "PATCH", body }),
   delete: <TResponse>(path: string, options?: Omit<ApiRequestOptions, "method" | "body">) =>
     apiRequest<TResponse>(path, { ...options, method: "DELETE" }),
+  postFormData: <TResponse>(
+    path: string,
+    body: FormData,
+    options?: Omit<ApiRequestOptions<FormData>, "method" | "body" | "headers"> & {
+      headers?: Record<string, string>;
+    },
+  ) => apiRequestFormData<TResponse>(path, body, { ...options, method: "POST" }),
+  patchFormData: <TResponse>(
+    path: string,
+    body: FormData,
+    options?: Omit<ApiRequestOptions<FormData>, "method" | "body" | "headers"> & {
+      headers?: Record<string, string>;
+    },
+  ) => apiRequestFormData<TResponse>(path, body, { ...options, method: "PATCH" }),
 };
 
 export function toApiError(error: unknown) {

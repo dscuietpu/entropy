@@ -8,7 +8,7 @@ interface MedicalShopCardProps {
 
 export function MedicalShopCard({ shop }: MedicalShopCardProps) {
   return (
-    <article className="rounded-[28px] border border-[var(--border)] bg-white/92 p-6 shadow-sm">
+    <article className="surface-card rounded-[30px] p-6">
       <p className="text-xs font-medium uppercase tracking-[0.2em] text-[var(--primary)]">Medical shop</p>
       <h3 className="mt-2 text-xl font-semibold text-[var(--foreground)]">{shop.name}</h3>
 
@@ -25,7 +25,7 @@ export function MedicalShopCard({ shop }: MedicalShopCardProps) {
         </div>
       </div>
 
-      <div className="mt-5">
+      <div className="mt-6">
         <p className="text-xs font-medium uppercase tracking-[0.18em] text-[var(--muted)]">Available medicines</p>
         <div className="mt-3 flex flex-wrap gap-2">
           {shop.availableMedicines.length ? (

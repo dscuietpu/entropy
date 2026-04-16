@@ -11,6 +11,19 @@ export interface ReviewListResponse {
   };
 }
 
+export interface CreateReviewPayload {
+  targetType: "hospital" | "doctor";
+  targetId: string;
+  rating: number;
+  comment: string;
+}
+
+const withAuth = (token: string) => ({
+  headers: {
+    Authorization: `Bearer ${token}`,
+  },
+});
+
 export const reviewService = {
   listForHospital: async (hospitalId: string, limit = 6) => {
     const response = await apiClient.getEnvelope<Review[]>(
@@ -27,4 +40,6 @@ export const reviewService = {
       },
     } satisfies ReviewListResponse;
   },
+  create: (payload: CreateReviewPayload, token: string) =>
+    apiClient.post<Review, CreateReviewPayload>("/api/reviews", payload, withAuth(token)),
 };

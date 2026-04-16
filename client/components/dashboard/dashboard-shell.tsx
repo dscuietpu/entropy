@@ -16,6 +16,7 @@ import { getHospitalDashboardMetrics, type HospitalDashboardMetrics } from "@/se
 import { useAuth } from "@/hooks/use-auth";
 import { SectionPanel } from "@/components/dashboard/section-panel";
 import { SummaryCard } from "@/components/dashboard/summary-card";
+import { ErrorState } from "@/components/ui/error-state";
 
 const summaryConfig = [
   {
@@ -109,11 +110,10 @@ export function DashboardShell() {
 
   if (state.error && !state.data) {
     return (
-      <div className="rounded-[30px] border border-rose-200 bg-rose-50 px-6 py-8 text-rose-900">
-        <p className="text-sm font-semibold uppercase tracking-[0.24em] text-rose-700">Dashboard unavailable</p>
-        <h2 className="mt-3 text-2xl font-semibold">We could not load hospital metrics right now.</h2>
-        <p className="mt-3 max-w-2xl text-sm leading-7 text-rose-800/90">{state.error}</p>
-      </div>
+      <ErrorState
+        title="Dashboard unavailable"
+        description={state.error}
+      />
     );
   }
 

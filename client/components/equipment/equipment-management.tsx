@@ -5,8 +5,11 @@ import { LoaderCircle, PackagePlus, PencilLine, RotateCcw, Trash2 } from "lucide
 
 import { EquipmentFilters } from "@/components/equipment/equipment-filters";
 import { EquipmentFormPanel } from "@/components/equipment/equipment-form-panel";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { LoadingState } from "@/components/ui/loading-state";
 import { cn, getErrorMessage } from "@/lib/utils";
-import { useAuth } from "@/hooks";
+import { useAuth, useSocketEvents, useToast } from "@/hooks";
 import { doctorService, equipmentService } from "@/services";
 import type { Doctor, Equipment, EquipmentStatus } from "@/types";
 
@@ -62,6 +65,7 @@ function getAssignedDoctorId(assignedTo?: string | PopulatedDoctor) {
 
 export function EquipmentManagement() {
   const { token, user } = useAuth();
+  const toast = useToast();
   const hospitalId = user?.linkedHospitalId ?? "";
 
   const [filters, setFilters] = useState<FiltersState>(initialFilters);
@@ -120,6 +124,7 @@ export function EquipmentManagement() {
       });
     } catch (error) {
       setLoadError(getErrorMessage(error, "Failed to load equipment"));
+      toast.error("Unable to load equipment", getErrorMessage(error, "Failed to load equipment"));
     } finally {
       setIsLoading(false);
     }
@@ -128,6 +133,45 @@ export function EquipmentManagement() {
   useEffect(() => {
     void loadEquipment();
   }, [hospitalId, page, filters.status, filters.type, filters.hospitalSection]);
+
+  useSocketEvents(
+    {
+      "equipment:updated": (payload) => {
+        const updatedEquipment = payload as EquipmentRecord;
+        const equipmentHospitalId =
+          typeof updatedEquipment?.hospitalId === "string"
+            ? updatedEquipment.hospitalId
+            : (updatedEquipment?.hospitalId as { _id?: string } | undefined)?._id;
+
+        if (
+          !updatedEquipment?._id ||
+          equipmentHospitalId !== hospitalId ||
+          (filters.status && updatedEquipment.status !== filters.status) ||
+          (filters.type && !updatedEquipment.type.toLowerCase().includes(filters.type.trim().toLowerCase())) ||
+          (filters.hospitalSection &&
+            !updatedEquipment.hospitalSection.toLowerCase().includes(filters.hospitalSection.trim().toLowerCase()))
+        ) {
+          return;
+        }
+
+        setEquipment((current) => {
+          const exists = current.some((item) => item._id === updatedEquipment._id);
+
+          if (!exists) {
+            return current;
+          }
+
+          return current.map((item) => (item._id === updatedEquipment._id ? updatedEquipment : item));
+        });
+
+        setClaimSelections((current) => ({
+          ...current,
+          [updatedEquipment._id]: getAssignedDoctorId(updatedEquipment.assignedTo),
+        }));
+      },
+    },
+    Boolean(hospitalId),
+  );
 
   const openCreatePanel = () => {
     setFormMode("create");
@@ -161,6 +205,7 @@ export function EquipmentManagement() {
   const handleSave = async () => {
     if (!token || !hospitalId) {
       setActionError("You must be logged in as a hospital admin to manage equipment.");
+      toast.error("Equipment action failed", "You must be logged in as a hospital admin to manage equipment.");
       return;
     }
 
@@ -181,15 +226,18 @@ export function EquipmentManagement() {
       if (formMode === "create") {
         await equipmentService.create(payload, token);
         setSuccessMessage("Equipment created successfully.");
+        toast.success("Equipment created", "The inventory record was added successfully.");
       } else if (editingEquipmentId) {
         await equipmentService.update(editingEquipmentId, payload, token);
         setSuccessMessage("Equipment updated successfully.");
+        toast.success("Equipment updated", "The inventory record was updated successfully.");
       }
 
       closePanel();
       await loadEquipment();
     } catch (error) {
       setActionError(getErrorMessage(error, "Unable to save equipment"));
+      toast.error("Equipment action failed", getErrorMessage(error, "Unable to save equipment"));
     } finally {
       setIsSubmitting(false);
     }
@@ -198,6 +246,7 @@ export function EquipmentManagement() {
   const handleDelete = async (id: string) => {
     if (!token) {
       setActionError("You must be logged in to delete equipment.");
+      toast.error("Delete failed", "You must be logged in to delete equipment.");
       return;
     }
 
@@ -210,9 +259,11 @@ export function EquipmentManagement() {
     try {
       await equipmentService.remove(id, token);
       setSuccessMessage("Equipment deleted successfully.");
+      toast.success("Equipment deleted", "The inventory record was removed.");
       await loadEquipment();
     } catch (error) {
       setActionError(getErrorMessage(error, "Unable to delete equipment"));
+      toast.error("Delete failed", getErrorMessage(error, "Unable to delete equipment"));
     } finally {
       setActiveActionId(null);
     }
@@ -221,12 +272,14 @@ export function EquipmentManagement() {
   const handleClaim = async (id: string) => {
     if (!token) {
       setActionError("You must be logged in to claim equipment.");
+      toast.error("Claim failed", "You must be logged in to claim equipment.");
       return;
     }
 
     const doctorId = claimSelections[id];
     if (!doctorId) {
       setActionError("Select a doctor before claiming equipment.");
+      toast.info("Select a doctor", "Choose a doctor before claiming equipment.");
       return;
     }
 
@@ -237,9 +290,11 @@ export function EquipmentManagement() {
     try {
       await equipmentService.claim(id, { doctorId }, token);
       setSuccessMessage("Equipment claimed successfully.");
+      toast.success("Equipment claimed", "The equipment was assigned successfully.");
       await loadEquipment();
     } catch (error) {
       setActionError(getErrorMessage(error, "Unable to claim equipment"));
+      toast.error("Claim failed", getErrorMessage(error, "Unable to claim equipment"));
     } finally {
       setActiveActionId(null);
     }
@@ -248,6 +303,7 @@ export function EquipmentManagement() {
   const handleRelease = async (id: string) => {
     if (!token) {
       setActionError("You must be logged in to release equipment.");
+      toast.error("Release failed", "You must be logged in to release equipment.");
       return;
     }
 
@@ -258,9 +314,11 @@ export function EquipmentManagement() {
     try {
       await equipmentService.release(id, token);
       setSuccessMessage("Equipment released back to available stock.");
+      toast.success("Equipment released", "The equipment is back in available stock.");
       await loadEquipment();
     } catch (error) {
       setActionError(getErrorMessage(error, "Unable to release equipment"));
+      toast.error("Release failed", getErrorMessage(error, "Unable to release equipment"));
     } finally {
       setActiveActionId(null);
     }
@@ -307,7 +365,10 @@ export function EquipmentManagement() {
         <div className="rounded-[24px] border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-700">{successMessage}</div>
       ) : null}
       {loadError || actionError ? (
-        <div className="rounded-[24px] border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700">{loadError || actionError}</div>
+        <ErrorState
+          title={loadError ? "Unable to load equipment" : "Equipment action failed"}
+          description={loadError || actionError || "Something went wrong while managing equipment."}
+        />
       ) : null}
 
       <section className="rounded-[30px] border border-[var(--border)] bg-white/92 shadow-[0_20px_50px_rgba(16,35,27,0.06)]">
@@ -319,14 +380,18 @@ export function EquipmentManagement() {
         </div>
 
         {isLoading ? (
-          <div className="flex items-center justify-center gap-3 px-6 py-16 text-sm text-[var(--muted)]">
-            <LoaderCircle className="h-5 w-5 animate-spin" />
-            Loading equipment inventory...
+          <div className="px-6 py-8">
+            <LoadingState
+              title="Loading equipment inventory"
+              description="Fetching tracked devices, assignment data, and hospital section details."
+            />
           </div>
         ) : equipment.length === 0 ? (
-          <div className="px-6 py-16 text-center">
-            <p className="text-lg font-semibold text-[var(--foreground)]">No equipment found</p>
-            <p className="mt-2 text-sm text-[var(--muted)]">Try adjusting the filters or add the first equipment record.</p>
+          <div className="px-6 py-8">
+            <EmptyState
+              title="No equipment found"
+              description="Try adjusting the filters or add the first equipment record."
+            />
           </div>
         ) : (
           <>
